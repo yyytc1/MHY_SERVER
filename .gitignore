@@ -1,0 +1,11 @@
+*/build/
+*/dist/
+*.json
+*.txt
+*.spec
+*db
+/*.xml
+/js/
+*test*
+*.csv
+*.exe

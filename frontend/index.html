@@ -1,0 +1,996 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width,initial-scale=1"/>
+	<title>账号管理后台</title>
+	<link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+	<script src="https://unpkg.com/vue@3"></script>
+	<script src="https://unpkg.com/element-plus"></script>
+	<script src="https://unpkg.com/@element-plus/icons-vue"></script>
+	<style>
+      body {
+          margin: 0;
+          background: #f5f7fa;
+      }
+
+      .layout {
+          display: flex;
+          height: 100vh;
+      }
+
+      .sider {
+          width: 220px;
+          background: #001529;
+          color: #fff;
+      }
+
+      .sider .logo {
+          height: 56px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-bottom: 1px solid rgba(255, 255, 255, .08)
+      }
+
+      .sider a {
+          color: #cfd8dc;
+          text-decoration: none;
+          display: block;
+          padding: 12px 16px
+      }
+
+      .sider a.active, .sider a:hover {
+          background: rgba(255, 255, 255, .09);
+          color: #fff
+      }
+
+      .content {
+          flex: 1;
+          display: flex;
+          flex-direction: column
+      }
+
+      .topbar {
+          height: 56px;
+          background: #fff;
+          border-bottom: 1px solid #eee;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 16px
+      }
+
+      .page {
+          padding: 16px;
+          overflow: auto
+      }
+
+      .panel {
+          background: #fff;
+          border: 1px solid #eee;
+          border-radius: 8px;
+          padding: 12px;
+          margin-bottom: 12px
+      }
+
+      .muted {
+          color: #909399
+      }
+
+      .toolbar .el-button {
+          margin-right: 8px
+      }
+
+      .cell-badge .el-tag {
+          text-align: center
+      }
+
+      .split {
+          display: flex;
+          gap: 12px
+      }
+
+      .left-col {
+          width: 300px
+      }
+
+      /* 折叠：单行布局 */
+      .filter-row {
+          display: flex;
+          align-items: flex-start;
+          flex-wrap: wrap;
+          column-gap: 24px;
+          row-gap: 8px;
+      }
+
+      .filter-row .el-form-item {
+          margin-bottom: 0;
+      }
+
+      .filter-actions {
+          margin-left: auto;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+      }
+
+      .filter-actions.full {
+          grid-column: 1 / -1; /* 占满整行 */
+          justify-content: flex-start;
+          margin-top: 8px;
+      }
+
+      /* 展开：3列自适应网格 */
+      .filter-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(260px, 1fr));
+          gap: 12px 24px;
+          align-items: start;
+      }
+
+      .range {
+          display: flex;
+          align-items: center;
+      }
+
+      .range .el-input {
+          width: 110px;
+      }
+
+      .range-split {
+          padding: 0 6px;
+          color: #909399;
+      }
+
+	</style>
+</head>
+<body>
+<div id="app" class="layout">
+	<!-- 左侧菜单 -->
+	<div class="sider">
+		<div class="logo">★ 账号后台</div>
+		<a href="#" :class="{active:route==='home'}" @click="route='home'">首页</a>
+		<a href="#" :class="{active:route==='accounts'}" @click="route='accounts'">账号管理</a>
+		<a href="#" :class="{active:route==='keys'}" @click="route='keys'">密钥管理</a>
+		<a href="#" :class="{active:route==='proxies'}" @click="route='proxies'">代理管理</a>
+	</div>
+
+	<!-- 右侧内容 -->
+	<div class="content">
+		<div class="topbar">
+			<div class="muted">当前在线设备：0 台　运行中设备：0 台</div>
+			<div v-if="token">
+				<el-dropdown @command="onMenu">
+          <span class="el-dropdown-link">
+            {{user?.username}} <el-icon><ArrowDown/></el-icon>
+          </span>
+					<template #dropdown>
+						<el-dropdown-menu>
+							<el-dropdown-item command="changePwd">修改密码</el-dropdown-item>
+							<el-dropdown-item command="logout">退出登录</el-dropdown-item>
+						</el-dropdown-menu>
+					</template>
+				</el-dropdown>
+			</div>
+		</div>
+
+		<div class="page">
+			<!-- 登录 -->
+			<div v-if="!token" class="panel" style="max-width:420px;margin:60px auto;">
+				<h3>登录</h3>
+				<el-form label-width="80px" @submit.prevent>
+					<el-form-item label="用户名">
+						<el-input v-model="loginForm.username" placeholder="admin"></el-input>
+					</el-form-item>
+					<el-form-item label="密码">
+						<el-input v-model="loginForm.password" type="password" show-password placeholder="admin123"></el-input>
+					</el-form-item>
+					<el-form-item>
+						<el-button type="primary" @click="doLogin">登录</el-button>
+					</el-form-item>
+				</el-form>
+			</div>
+
+			<template v-else>
+				<!-- 首页 -->
+				<div v-if="route==='home'">
+					<div class="panel">
+						<h3>基本设置</h3>
+						<el-form label-width="90px" style="max-width:720px">
+							<el-form-item label="昵称">
+								<el-input v-model="profile.nickname" placeholder="管理员"></el-input>
+							</el-form-item>
+							<el-form-item label="账号">
+								<el-input :model-value="user?.username" disabled></el-input>
+							</el-form-item>
+							<el-form-item label="旧密码">
+								<el-input v-model="pwdForm.old_password" type="password" show-password></el-input>
+							</el-form-item>
+							<el-form-item label="新密码">
+								<el-input v-model="pwdForm.new_password" type="password" show-password></el-input>
+							</el-form-item>
+							<el-form-item>
+								<el-button type="primary" @click="savePwd">更新基本信息</el-button>
+							</el-form-item>
+						</el-form>
+					</div>
+				</div>
+
+				<!-- 账号管理 -->
+				<div v-if="route==='accounts'">
+					<div class="split">
+						<!-- 左：号池列表（只显示名称 + 操作） -->
+						<div class="left-col">
+							<div class="panel">
+								<div style="display:flex;justify-content:space-between;align-items:center">
+									<h4 style="margin:0">号池列表</h4>
+									<el-button type="primary" size="small" @click="openAddPool">+ 新建号池</el-button>
+								</div>
+
+								<el-table
+										:data="pools"
+										border
+										style="width:100%"
+										:show-header="false"
+										@row-click="onPoolClick"
+										highlight-current-row
+										:row-class-name="r => (r.row && r.row.id === query.pool_id ? 'current' : '')"
+								>
+									<!-- 第一列：名称（多行 chip 控件） -->
+									<el-table-column class-name="pool-name-col">
+										<template #default="{ row }">
+											<div
+													:class="['chip-multiline', row && row.id === query.pool_id ? 'is-active' : '']"
+													:title="row?.name || '-'"
+											>
+												{{ row?.name || '-' }}
+											</div>
+										</template>
+									</el-table-column>
+
+
+									<!-- 第二列：操作（固定在右侧，右对齐） -->
+									<el-table-column fixed="right" align="right" width="70">
+										<template #default="{ row }">
+											<div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+												<el-button size="small" style="width:50px"
+																	 @click.stop="renamePool(row)">重命名
+												</el-button>
+												<el-popconfirm title="删除该号池及其下账号？" @confirm="delPool(row)">
+													<template #reference>
+														<el-button size="small" type="danger" style="width:50px">删除</el-button>
+													</template>
+												</el-popconfirm>
+											</div>
+										</template>
+									</el-table-column>
+								</el-table>
+							</div>
+						</div>
+
+
+						<!-- 右：筛选 + 列表 -->
+						<div style="flex:1">
+							<!-- 筛选区：折叠/展开 -->
+							<div class="panel">
+								<el-form :inline="true" label-width="80px" @submit.prevent class="filter">
+									<!-- 折叠视图（仅一行） -->
+									<div v-if="!filterExpand" class="filter-row">
+										<el-form-item label="邮箱">
+											<el-input v-model="query.kw" placeholder="请输入"/>
+										</el-form-item>
+										<el-form-item label="密码">
+											<el-input v-model="query.pwd" placeholder="请输入" />
+										</el-form-item>
+										<el-form-item label="邮箱密码">
+											<el-input v-model="query.email_pwd" placeholder="请输入"/>
+										</el-form-item>
+
+										<div class="filter-actions">
+											<el-button @click="resetQuery">重 置</el-button>
+											<el-button type="primary" @click="fetchAccounts">查 询</el-button>
+											<el-button link type="primary" @click="filterExpand=true">
+												展开
+												<el-icon style="margin-left:4px">
+													<ArrowDown/>
+												</el-icon>
+											</el-button>
+										</div>
+									</div>
+
+									<!-- 展开视图（全部项，3列自适应） -->
+									<div v-else class="filter-grid">
+										<el-form-item label="邮箱">
+											<el-input v-model="query.email" placeholder="请输入"/>
+										</el-form-item>
+										<el-form-item label="密码">
+											<el-input v-model="query.pwd" placeholder="请输入"/>
+										</el-form-item>
+										<el-form-item label="邮箱密码">
+											<el-input v-model="query.email_pwd" placeholder="请输入"/>
+										</el-form-item>
+
+										<el-form-item label="角色名">
+											<el-input v-model="query.role_name" placeholder="请输入"/>
+										</el-form-item>
+										<el-form-item label="设备名">
+											<el-input v-model="query.device_name" placeholder="请输入"/>
+										</el-form-item>
+										<el-form-item label="性别">
+											<el-select v-model="query.gender" placeholder="请选择">
+												<el-option :value="''" label="（全部）"/>
+												<el-option :value="1" label="男"/>
+												<el-option :value="2" label="女"/>
+											</el-select>
+										</el-form-item>
+
+										<el-form-item label="等级">
+											<div class="range">
+												<el-input v-model="query.level_start" placeholder="开始"/>
+												<span class="range-split">~</span>
+												<el-input v-model="query.level_end" placeholder="结束"/>
+											</div>
+										</el-form-item>
+										<el-form-item label="星琼">
+											<div class="range">
+												<el-input v-model="query.xq_start" placeholder="开始"/>
+												<span class="range-split">~</span>
+												<el-input v-model="query.xq_end" placeholder="结束"/>
+											</div>
+										</el-form-item>
+										<el-form-item label="专票">
+											<div class="range">
+												<el-input v-model="query.zp_start" placeholder="开始"/>
+												<span class="range-split">~</span>
+												<el-input v-model="query.zp_end" placeholder="结束"/>
+											</div>
+										</el-form-item>
+
+										<el-form-item label="通票">
+											<div class="range">
+												<el-input v-model="query.tp_start" placeholder="开始"/>
+												<span class="range-split">~</span>
+												<el-input v-model="query.tp_end" placeholder="结束"/>
+											</div>
+										</el-form-item>
+										<el-form-item label="账号状态">
+											<el-select v-model="query.status" placeholder="请选择">
+												<el-option :value="''" label="（全部）"/>
+												<el-option v-for="s in statuses" :key="s" :value="s" :label="s"/>
+											</el-select>
+										</el-form-item>
+										<el-form-item label="绑定信息">
+											<el-input v-model="query.bind_info" placeholder="请输入"/>
+										</el-form-item>
+
+										<el-form-item label="取号时间">
+											<el-date-picker
+													v-model="query.get_time"
+													type="daterange"
+													start-placeholder="开始日期"
+													end-placeholder="结束日期"
+													value-format="YYYY-MM-DD"
+											/>
+										</el-form-item>
+										<el-form-item label="更新时间">
+											<el-date-picker
+													v-model="query.update_time"
+													type="daterange"
+													start-placeholder="开始日期"
+													end-placeholder="结束日期"
+													value-format="YYYY-MM-DD"
+											/>
+										</el-form-item>
+										<el-form-item label="备注信息">
+											<el-input v-model="query.remark" placeholder="请输入"/>
+										</el-form-item>
+
+										<!-- 操作区（展开模式右下角） -->
+										<div class="filter-actions full">
+											<el-button @click="resetQuery">重 置</el-button>
+											<el-button type="primary" @click="fetchAccounts">查 询</el-button>
+											<el-button link type="primary" @click="filterExpand=false">
+												收起
+												<el-icon style="margin-left:4px">
+													<ArrowUp/>
+												</el-icon>
+											</el-button>
+										</div>
+									</div>
+								</el-form>
+							</div>
+
+
+							<div class="panel">
+								<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+									<div class="muted">账号列表（{{currentPoolName || '全部号池'}}）</div>
+									<div class="muted">共 {{total}} 条</div>
+								</div>
+								<!-- 每一行就是一个账号；用列展示字段 -->
+								<el-table :data="items" border style="width:100%" @selection-change="onSelChange">
+									<el-table-column type="selection" width="48"/>
+									<el-table-column prop="email" label="邮箱" min-width="220"/>
+									<el-table-column prop="pwd" label="密码" min-width="160"/>
+									<el-table-column prop="pool_name" label="号池" width="160"/>
+									<el-table-column label="状态" width="120" class-name="cell-badge">
+										<template #default="scope">
+											<el-tag :type="tagType(scope.row.status)" round>{{scope.row.status}}</el-tag>
+										</template>
+									</el-table-column>
+									<el-table-column prop="remark" label="备注" min-width="220"/>
+									<el-table-column label="操作" width="240">
+										<template #default="scope">
+											<el-select v-model="scope.row.status" size="small" style="width:120px"
+																 @change="setStatus(scope.row)">
+												<el-option v-for="s in statuses" :key="s" :label="s" :value="s"/>
+											</el-select>
+											<el-button size="small" type="danger" @click="delOne(scope.row)">删除</el-button>
+										</template>
+									</el-table-column>
+								</el-table>
+								<div style="margin-top:10px; display:flex; justify-content:flex-end;">
+									<el-pagination background layout="prev, pager, next"
+																 :page-size="query.size" :total="total"
+																 v-model:current-page="query.page"
+																 @current-change="fetchAccounts"/>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- 密钥管理（列展示，行=一条密钥） -->
+				<div v-if="route==='keys'">
+					<div class="panel">
+						<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+							<el-input v-model="keyForm.name" placeholder="名称" style="width:180px"/>
+							<el-input v-model="keyForm.value" placeholder="密钥" style="width:320px"/>
+							<el-input v-model="keyForm.remark" placeholder="备注" style="width:220px"/>
+							<el-button type="primary" @click="addKey">+ 新增</el-button>
+						</div>
+					</div>
+					<div class="panel">
+						<el-table :data="keysPage.items" border>
+							<el-table-column type="index" label="#" width="60"/>
+							<el-table-column prop="name" label="名称" width="180"/>
+							<el-table-column prop="value" label="密钥" min-width="300"/>
+							<el-table-column prop="remark" label="备注" min-width="200"/>
+							<el-table-column prop="created_at" label="创建时间" width="160"/>
+							<el-table-column label="操作" width="160">
+								<template #default="scope">
+									<el-button size="small" @click="editKey(scope.row)">编辑</el-button>
+									<el-button size="small" type="danger" @click="delKey(scope.row)">删除</el-button>
+								</template>
+							</el-table-column>
+						</el-table>
+						<div style="margin-top:10px;display:flex;justify-content:flex-end">
+							<el-pagination background layout="prev, pager, next"
+														 :page-size="keysPage.size" :total="keys.length"
+														 v-model:current-page="keysPage.page"
+														 @current-change="sliceKeys"/>
+						</div>
+					</div>
+				</div>
+
+				<!-- 代理管理（列展示，行=一个代理） -->
+				<div v-if="route==='proxies'">
+					<div class="panel">
+						<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+							<el-input v-model="proxyForm.name" placeholder="名称" style="width:140px"/>
+							<el-input v-model="proxyForm.host" placeholder="主机" style="width:160px"/>
+							<el-input v-model.number="proxyForm.port" placeholder="端口" style="width:120px"/>
+							<el-input v-model="proxyForm.username" placeholder="用户" style="width:120px"/>
+							<el-input v-model="proxyForm.password" placeholder="密码" style="width:120px"/>
+							<el-select v-model="proxyForm.status" style="width:120px">
+								<el-option value="active" label="active"/>
+								<el-option value="disabled" label="disabled"/>
+							</el-select>
+							<el-input v-model="proxyForm.remark" placeholder="备注" style="width:220px"/>
+							<el-button type="primary" @click="addProxy">+ 新增</el-button>
+						</div>
+					</div>
+					<div class="panel">
+						<el-table :data="proxiesPage.items" border>
+							<el-table-column type="index" label="#" width="60"/>
+							<el-table-column prop="name" label="名称" width="140"/>
+							<el-table-column prop="host" label="Host" width="160"/>
+							<el-table-column prop="port" label="Port" width="90"/>
+							<el-table-column prop="username" label="用户" width="120"/>
+							<el-table-column prop="password" label="密码" width="140"/>
+							<el-table-column prop="status" label="状态" width="100"/>
+							<el-table-column prop="remark" label="备注" min-width="200"/>
+							<el-table-column prop="updated_at" label="更新时间" width="160"/>
+							<el-table-column label="操作" width="180">
+								<template #default="scope">
+									<el-button size="small" @click="editProxy(scope.row)">编辑</el-button>
+									<el-button size="small" type="danger" @click="delProxy(scope.row)">删除</el-button>
+								</template>
+							</el-table-column>
+						</el-table>
+						<div style="margin-top:10px;display:flex;justify-content:flex-end">
+							<el-pagination background layout="prev, pager, next"
+														 :page-size="proxiesPage.size" :total="proxies.length"
+														 v-model:current-page="proxiesPage.page"
+														 @current-change="sliceProxies"/>
+						</div>
+					</div>
+				</div>
+			</template>
+		</div>
+	</div>
+
+	<!-- 添加账号 -->
+	<el-dialog v-model="dlgAdd" title="添加账号" width="520px">
+		<el-form label-width="90px">
+			<el-form-item label="号池">
+				<el-select v-model="form.pool_id" placeholder="选择号池" style="width:240px">
+					<el-option v-for="p in pools" :key="p.id" :value="p.id" :label="p.name"/>
+				</el-select>
+			</el-form-item>
+			<el-form-item label="邮箱">
+				<el-input v-model="form.email"/>
+			</el-form-item>
+			<el-form-item label="密码">
+				<el-input v-model="form.pwd"/>
+			</el-form-item>
+			<el-form-item label="状态">
+				<el-select v-model="form.status">
+					<el-option v-for="s in statuses" :key="s" :value="s" :label="s"/>
+				</el-select>
+			</el-form-item>
+			<el-form-item label="备注">
+				<el-input v-model="form.remark"/>
+			</el-form-item>
+		</el-form>
+		<template #footer>
+			<el-button @click="dlgAdd=false">取消</el-button>
+			<el-button type="primary" @click="saveAccount">保存</el-button>
+		</template>
+	</el-dialog>
+
+	<!-- 修改密码 -->
+	<el-dialog v-model="dlgPwd" title="修改密码" width="420px">
+		<el-form label-width="90px" @submit.prevent>
+			<el-form-item label="原密码">
+				<el-input v-model="pwdForm.old_password" type="password" show-password/>
+			</el-form-item>
+			<el-form-item label="新密码">
+				<el-input v-model="pwdForm.new_password" type="password" show-password/>
+			</el-form-item>
+		</el-form>
+		<template #footer>
+			<el-button @click="dlgPwd=false">取消</el-button>
+			<el-button type="primary" @click="savePwd">保存</el-button>
+		</template>
+	</el-dialog>
+
+	<!-- 新建号池 -->
+	<el-dialog v-model="dlgPool" title="新建号池" width="420px">
+		<el-form label-width="90px" @submit.prevent>
+			<el-form-item label="号池名称">
+				<el-input v-model="poolForm.name" placeholder="请输入号池名称"/>
+			</el-form-item>
+		</el-form>
+		<template #footer>
+			<el-button @click="dlgPool=false">取消</el-button>
+			<el-button type="primary" @click="addPoolSubmit">确定</el-button>
+		</template>
+	</el-dialog>
+</div>
+
+<script>
+	const {createApp, ref, reactive, onMounted, watch} = Vue
+	const {ElMessage} = ElementPlus
+	const API = 'http://127.0.0.1:8000'
+
+	const app = createApp({
+		setup() {
+			// auth
+			const token = ref(localStorage.getItem('token') || '')
+			const user = ref(null)
+			const route = ref('home')
+			const filterExpand = Vue.ref(false);
+			const loginForm = reactive({username: 'admin', password: 'admin123'})
+			const doLogin = async () => {
+				const r = await fetch(API + '/api/login', {
+					method: 'POST',
+					headers: {'Content-Type': 'application/json'},
+					body: JSON.stringify(loginForm)
+				})
+				const j = await r.json()
+				if (!j.ok) {
+					ElMessage.error(j.msg || '登录失败');
+					return
+				}
+				token.value = j.token;
+				localStorage.setItem('token', j.token);
+				user.value = {username: j.username}
+				route.value = 'home'
+				await initData()
+			}
+			const logout = () => {
+				localStorage.removeItem('token');
+				token.value = '';
+				user.value = null;
+				route.value = 'home'
+			}
+
+			// 顶部菜单 & 修改密码
+			const dlgPwd = ref(false)
+			const pwdForm = reactive({old_password: '', new_password: ''})
+			const onMenu = (cmd) => {
+				if (cmd === 'changePwd') {
+					dlgPwd.value = true
+				} else if (cmd === 'logout') {
+					logout()
+				}
+			}
+			const savePwd = async () => {
+				if (!pwdForm.old_password || !pwdForm.new_password) {
+					ElMessage.warning('请输入旧/新密码');
+					return
+				}
+				const r = await fetch(API + '/api/change-password', {
+					method: 'POST',
+					headers: {
+						'Authorization': 'Bearer ' + (localStorage.getItem('token') || ''),
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(pwdForm)
+				})
+				const j = await r.json()
+				if (!j.ok) {
+					ElMessage.error(j.msg || '修改失败');
+					return
+				}
+				ElMessage.success('密码已修改，请重新登录');
+				logout();
+				location.reload()
+			}
+
+			// 公共
+			const headers = () => token.value ? {
+				'Authorization': 'Bearer ' + token.value,
+				'Content-Type': 'application/json'
+			} : {}
+			const statuses = ['待使用', '运行中', '完成', '账号异常', '账号封禁']
+			const tagType = s => ({active: 'success', disabled: 'warning', banned: 'danger', unknown: ''}[s] || '')
+			const profile = reactive({nickname: '管理员'})
+
+			// ---------- 号池 ----------
+			const pools = ref([])
+			const poolName = ref('')               // 快速新增输入框
+			const currentPoolName = ref('')
+			const fetchPools = async () => {
+				const r = await fetch(API + '/api/pools', {headers: headers()})
+				const j = await r.json();
+				if (j.ok) {
+					pools.value = j.items
+				}
+			}
+			const onPoolClick = (row) => {
+				query.pool_id = row.id;
+				currentPoolName.value = row.name;
+				query.page = 1;
+				fetchAccounts()
+			}
+
+			// 弹窗新增
+			const dlgPool = ref(false)
+			const poolForm = reactive({name: ''})
+			const openAddPool = () => {
+				poolForm.name = '';
+				dlgPool.value = true
+			}
+			const addPoolSubmit = async () => {
+				const name = (poolForm.name || '').trim()
+				if (!name) {
+					ElMessage.warning('请输入号池名称');
+					return
+				}
+				const r = await fetch(API + '/api/pools', {
+					method: 'POST',
+					headers: headers(),
+					body: JSON.stringify({name})
+				})
+				const j = await r.json();
+				if (!j.ok) {
+					ElMessage.error(j.msg || '创建失败');
+					return
+				}
+				dlgPool.value = false
+				const newId = j.id
+				await fetchPools()
+				const newly = pools.value.find(p => String(p.id) === String(newId))
+				if (newly) {
+					query.pool_id = newly.id;
+					currentPoolName.value = newly.name;
+					query.page = 1;
+					await fetchAccounts()
+				}
+				ElMessage.success('号池已创建')
+			}
+
+			const renamePool = async (row) => {
+				const name = prompt('新名称：', row.name)
+				if (name === null) return
+				const r = await fetch(`${API}/api/pools/${row.id}`, {
+					method: 'PATCH',
+					headers: headers(),
+					body: JSON.stringify({name})
+				})
+				const j = await r.json();
+				if (!j.ok) {
+					ElMessage.error(j.msg || '重命名失败');
+					return
+				}
+				await fetchPools();
+				if (query.pool_id === row.id) currentPoolName.value = name;
+				ElMessage.success('已重命名')
+			}
+			const renamePoolBySelect = () => {
+				const row = pools.value.find(p => p.id === query.pool_id);
+				if (row) renamePool(row)
+			}
+			const delPool = async (row) => {
+				const r = await fetch(`${API}/api/pools/${row.id}`, {method: 'DELETE', headers: headers()})
+				const j = await r.json();
+				if (!j.ok) {
+					ElMessage.error('删除失败');
+					return
+				}
+				await fetchPools();
+				if (query.pool_id === row.id) {
+					query.pool_id = '';
+					currentPoolName.value = ''
+				}
+				await fetchAccounts();
+				ElMessage.success('已删除')
+			}
+
+			// ---------- 账号 ----------
+			const query = reactive({pool_id: '', status: '', kw: '', page: 1, size: 100})
+			const items = ref([]);
+			const total = ref(0)
+			const fetchAccounts = async () => {
+
+				const p = new URLSearchParams()
+				for (const k of ['pool_id', 'status', 'kw', 'page', 'size']) {
+					if (query[k] !== '' && query[k] !== null) {
+						p.append(k, query[k])
+					}
+				}
+				const r = await fetch(API + '/api/accounts?' + p.toString(), {headers: headers()})
+				const j = await r.json();
+				if (j.ok) {
+					for (const jKey in j.items) {
+						j.items[jKey].status = statuses[j.items[jKey].status];
+					}
+					items.value = j.items;
+					total.value = j.total
+				}
+			}
+			const resetQuery = () => {
+				query.status = '';
+				query.kw = '';
+				query.page = 1;
+				fetchAccounts()
+			}
+			const selIds = ref([]);
+			const onSelChange = rows => selIds.value = rows.map(r => r.id)
+			const delSelected = async () => {
+				for (const id of selIds.value) {
+					await fetch(`${API}/api/accounts/${id}`, {method: 'DELETE', headers: headers()})
+				}
+				selIds.value = [];
+				fetchAccounts();
+				ElMessage.success('已删除')
+			}
+			const delOne = async row => {
+				await fetch(`${API}/api/accounts/${row.id}`, {method: 'DELETE', headers: headers()});
+				fetchAccounts();
+				ElMessage.success('已删除')
+			}
+			const setStatus = async row => {
+				await fetch(`${API}/api/accounts/${row.id}`, {
+					method: 'PATCH',
+					headers: headers(),
+					body: JSON.stringify({status: row.status})
+				});
+				ElMessage.success('状态已更新')
+			}
+			const dlgAdd = ref(false)
+			const acc_form = reactive({pool_id: '', email: '', pwd: '', status: statuses[0], remark: ''})
+			const openAdd = () => {
+				if (!pools.value.length) {
+					ElMessage.warning('请先创建号池');
+					return
+				}
+				dlgAdd.value = true;
+				acc_form.pool_id = query.pool_id || pools.value[0]?.id || ''
+			}
+			const saveAccount = async () => {
+				const r = await fetch(API + '/api/accounts', {
+					method: 'POST',
+					headers: headers(),
+					body: JSON.stringify(acc_form)
+				});
+				const j = await r.json();
+				if (j.ok) {
+					dlgAdd.value = false;
+					fetchAccounts();
+					ElMessage.success('已添加')
+				} else ElMessage.error(j.msg || '失败')
+			}
+
+			// ---------- 密钥（前端分页） ----------
+			const keys = ref([])
+			const keyForm = reactive({name: '', value: '', remark: ''})
+			const keysPage = reactive({page: 1, size: 20, items: []})
+			const sliceKeys = () => {
+				const s = (keysPage.page - 1) * keysPage.size;
+				keysPage.items = keys.value.slice(s, s + keysPage.size)
+			}
+			const fetchKeys = async () => {
+				const r = await fetch(API + '/api/keys', {headers: headers()});
+				const j = await r.json();
+				if (j.ok) {
+					keys.value = j.items;
+					sliceKeys()
+				}
+			}
+			watch(() => keysPage.page, sliceKeys)
+			const addKey = async () => {
+				if (!keyForm.name || !keyForm.value) {
+					ElMessage.warning('名称/密钥必填');
+					return
+				}
+				const r = await fetch(API + '/api/keys', {
+					method: 'POST',
+					headers: headers(),
+					body: JSON.stringify(keyForm)
+				})
+				const j = await r.json();
+				if (j.ok) {
+					keyForm.name = '';
+					keyForm.value = '';
+					keyForm.remark = '';
+					await fetchKeys();
+					ElMessage.success('已新增')
+				} else ElMessage.error(j.msg || '失败')
+			}
+			const editKey = async row => {
+				const v = prompt('编辑密钥：', row.value);
+				if (v === null) return;
+				await fetch(`${API}/api/keys/${row.id}`, {
+					method: 'PATCH',
+					headers: headers(),
+					body: JSON.stringify({value: v})
+				});
+				await fetchKeys();
+				ElMessage.success('已更新')
+			}
+			const delKey = async row => {
+				await fetch(`${API}/api/keys/${row.id}`, {method: 'DELETE', headers: headers()});
+				await fetchKeys();
+				ElMessage.success('已删除')
+			}
+
+			// ---------- 代理（前端分页） ----------
+			const proxies = ref([])
+			const proxyForm = reactive({
+				name: '',
+				host: '',
+				port: '',
+				username: '',
+				password: '',
+				status: 'active',
+				remark: ''
+			})
+			const proxiesPage = reactive({page: 1, size: 20, items: []})
+			const sliceProxies = () => {
+				const s = (proxiesPage.page - 1) * proxiesPage.size;
+				proxiesPage.items = proxies.value.slice(s, s + proxiesPage.size)
+			}
+			const fetchProxies = async () => {
+				const r = await fetch(API + '/api/proxies', {headers: headers()});
+				const j = await r.json();
+				if (j.ok) {
+					proxies.value = j.items;
+					sliceProxies()
+				}
+			}
+			watch(() => proxiesPage.page, sliceProxies)
+			const addProxy = async () => {
+				if (!proxyForm.name || !proxyForm.host || !proxyForm.port) {
+					ElMessage.warning('名称/host/port 必填');
+					return
+				}
+				const r = await fetch(API + '/api/proxies', {
+					method: 'POST',
+					headers: headers(),
+					body: JSON.stringify(proxyForm)
+				})
+				const j = await r.json();
+				if (j.ok) {
+					Object.assign(proxyForm, {
+						name: '',
+						host: '',
+						port: '',
+						username: '',
+						password: '',
+						status: 'active',
+						remark: ''
+					});
+					await fetchProxies();
+					ElMessage.success('已新增')
+				} else ElMessage.error(j.msg || '失败')
+			}
+			const editProxy = async row => {
+				const host = prompt('Host：', row.host);
+				if (host === null) return;
+				await fetch(`${API}/api/proxies/${row.id}`, {
+					method: 'PATCH',
+					headers: headers(),
+					body: JSON.stringify({host})
+				});
+				await fetchProxies();
+				ElMessage.success('已更新')
+			}
+			const delProxy = async row => {
+				await fetch(`${API}/api/proxies/${row.id}`, {method: 'DELETE', headers: headers()});
+				await fetchProxies();
+				ElMessage.success('已删除')
+			}
+
+			// 导出账号
+			const exportTxt = () => {
+				const p = new URLSearchParams()
+				if (query.pool_id) p.append('pool_id', query.pool_id)
+				if (query.status) p.append('status', query.status)
+				window.open(`${API}/api/accounts/export?${p.toString()}`, '_blank')
+			}
+
+			// 初始化
+			const initData = async () => {
+				await fetchPools();
+				await fetchAccounts();
+				await fetchKeys();
+				await fetchProxies()
+				if (!user.value) {
+					const r = await fetch(API + '/api/me', {headers: headers()});
+					if (r.ok) {
+						const j = await r.json();
+						user.value = j.user
+					}
+				}
+			}
+			onMounted(async () => {
+				if (token.value) {
+					route.value = 'home';
+					await initData()
+				}
+			})
+
+			return {
+				token, user, route,
+				loginForm, doLogin, logout,
+				onMenu, dlgPwd, pwdForm, savePwd,
+				profile,filterExpand,
+				pools, poolName, fetchPools, onPoolClick,
+				dlgPool, poolForm, openAddPool, addPoolSubmit,
+				renamePool, renamePoolBySelect, delPool,
+				query, items, total, fetchAccounts, resetQuery, selIds, onSelChange, delSelected, delOne, setStatus,
+				statuses, tagType, dlgAdd, form: acc_form, openAdd, saveAccount, currentPoolName,
+				keys, keyForm, keysPage, sliceKeys, fetchKeys, addKey, editKey, delKey,
+				proxies, proxyForm, proxiesPage, sliceProxies, fetchProxies, addProxy, editProxy, delProxy,
+				exportTxt
+			}
+		}
+	})
+	for (const [k, v] of Object.entries(ElementPlusIconsVue)) app.component(k, v)
+	app.use(ElementPlus).mount('#app')
+</script>
+</body>
+</html>

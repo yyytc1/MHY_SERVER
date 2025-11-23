@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>局域网数据面板</title>
+  <style>
+    body{font-family:Arial;background:#f5f5f5;margin:0;padding:20px}
+    h1,h2{color:#444;margin-top:20px}
+    table{width:100%;border-collapse:collapse;background:#fff;box-shadow:0 0 4px rgba(0,0,0,.1)}
+    th,td{padding:8px 12px;border:1px solid #ddd;text-align:left;font-size:14px}
+    th{background:#f0f0f0;cursor:pointer;white-space:nowrap;}
+    tr:nth-child(even){background:#fafafa}
+    .tabs{margin-top:10px}
+    .tab-buttons{margin-bottom:10px;border-bottom:1px solid #ccc}
+    .tab-btn{
+      padding:8px 16px;
+      cursor:pointer;
+      border:1px solid #ccc;
+      border-bottom:none;
+      background:#eee;
+      margin-right:5px;
+      border-radius:4px 4px 0 0;
+    }
+    .tab-btn.active{
+      background:#fff;
+      font-weight:bold;
+    }
+    .tab-content{
+      display:none;
+      background:#fff;
+      padding:10px;
+      box-shadow:0 0 4px rgba(0,0,0,.1);
+    }
+    .tab-content.active{
+      display:block;
+    }
+    .toolbar{
+      margin-bottom:10px;
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:10px;
+    }
+    .toolbar label{
+      font-size:14px;
+    }
+    .toolbar select,.toolbar button,.toolbar input{
+      margin-left:5px;
+      padding:4px 8px;
+      font-size:13px;
+    }
+    .sortable{
+      position:relative;
+      padding-right:16px;
+    }
+    .sortable::after{
+      content:"";
+      position:absolute;
+      right:4px;
+      top:50%;
+      transform:translateY(-50%);
+      font-size:10px;
+      opacity:0.4;
+    }
+    .sortable[data-sort-dir="asc"]::after{
+      content:"▲";
+    }
+    .sortable[data-sort-dir="desc"]::after{
+      content:"▼";
+    }
+    .stats-box{
+      margin-bottom:10px;
+      font-size:14px;
+    }
+    .stats-box span{
+      margin-right:20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>局域网数据面板</h1>
+
+  <div class="tabs">
+    <div class="tab-buttons">
+      <button class="tab-btn active" data-tab="accounts" onclick="showTab('accounts')">账号列表</button>
+      <button class="tab-btn" data-tab="user-info" onclick="showTab('user-info')">本地订单</button>
+      <button class="tab-btn" data-tab="remote-orders" onclick="showTab('remote-orders')">远程订单</button>
+    </div>
+
+    <!-- Tab 1: 账号列表 -->
+    <div id="tab-accounts" class="tab-content active">
+      <h2>账号列表</h2>
+
+      <div class="toolbar">
+        <label>邀请状态：
+          <select id="filter-status" onchange="onFilterChange()">
+            <option value="all">全部</option>
+            {% for s in statuses %}
+            <option value="{{ s }}">{{ status_labels.get(s, s) }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label>搜索（用户名/设备码/绑定邀请码）：
+          <input id="search-text" placeholder="输入关键字后回车或点搜索" onkeydown="if(event.key==='Enter'){onSearchChange();}">
+        </label>
+        <button onclick="onSearchChange()">搜索</button>
+        <button onclick="resetSearch()">重置</button>
+
+        <label>每页显示：
+          <select id="page-size-select" onchange="onPageSizeChange()">
+            <option value="10">10 行</option>
+            <option value="20" selected>20 行</option>
+            <option value="50">50 行</option>
+            <option value="100">100 行</option>
+          </select>
+        </label>
+
+        <span id="page-info" style="margin-left:20px;">第 1 页</span>
+        <button onclick="changePage(-1)">上一页</button>
+        <button onclick="changePage(1)">下一页</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th class="sortable" data-field="id" onclick="setSort('id', this)">ID</th>
+            <th class="sortable" data-field="username" onclick="setSort('username', this)">用户名</th>
+            <th class="sortable" data-field="invite_status" onclick="setSort('invite_status', this)">邀请状态</th>
+            <th class="sortable" data-field="devicename" onclick="setSort('devicename', this)">设备码</th>
+            <th>绑定邀请码</th>
+            <th class="sortable" data-field="start_at" onclick="setSort('start_at', this)">取号时间</th>
+            <th class="sortable" data-field="update_at" onclick="setSort('update_at', this)">更新时间</th>
+          </tr>
+        </thead>
+        <tbody id="accounts-body">
+          <!-- 由 JS 通过 /api/accounts 动态填充 -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Tab 2: 本地订单 -->
+    <div id="tab-user-info" class="tab-content">
+      <h2>本地订单</h2>
+
+      <div class="stats-box">
+        <span>待邀约订单：<strong id="pending-count">0</strong></span>
+        <span>已完成订单：<strong id="completed-count">0</strong></span>
+        <span>失败订单：<strong id="failed-count">0</strong></span>
+      </div>
+
+      <div class="toolbar">
+        <input type="checkbox" id="local-check-all" onchange="toggleLocalCheckAll()"> 全选
+        <button id="local-batch-delete-btn" disabled onclick="batchDeleteLocal()">批量删除</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="local-check-all-header" onchange="toggleLocalCheckAll()"></th>
+            <th>卡密</th><th>邀请码</th><th>邀请数量</th><th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="local-orders-body">
+          {% for row in user_info %}
+          <tr>
+            <td><input type="checkbox" class="local-row-checkbox" value="{{ row.secret_key }}" data-invite-code="{{ row.invite_code }}" onchange="onLocalCheckboxChange(this)"></td>
+            <td>{{ row.secret_key }}</td>
+            <td>{{ row.invite_code }}</td>
+            <td>{{ row.invite_num }}</td>
+            <td><button onclick="deleteLocalOrder('{{ row.secret_key }}')">删除</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Tab 3: 远程订单 -->
+    <div id="tab-remote-orders" class="tab-content">
+      <h2>远程订单</h2>
+
+      <div class="toolbar">
+        <label>订单状态：
+          <select id="remote-status" onchange="onRemoteStatusChange()">
+            <option value="">全部状态</option>
+            <option value="待邀请">待邀请</option>
+            <option value="邀请中">邀请中</option>
+            <option value="完成">完成</option>
+            <option value="失败">失败</option>
+          </select>
+        </label>
+
+        <label>搜索邀请码：
+          <input id="remote-search-invite-code" placeholder="输入邀请码" onkeydown="if(event.key==='Enter'){searchByInviteCode();}">
+        </label>
+        <button onclick="searchByInviteCode()">搜索</button>
+
+        <label>搜索卡密：
+          <input id="remote-search-secret-key" placeholder="输入卡密" onkeydown="if(event.key==='Enter'){searchBySecretKey();}">
+        </label>
+        <button onclick="searchBySecretKey()">搜索</button>
+
+        <button onclick="resetRemoteSearch()">重置</button>
+
+        <label>每页显示：
+          <select id="remote-pagesize" onchange="onRemotePageSizeChange()">
+            <option value="10">10 行</option>
+            <option value="20" selected>20 行</option>
+            <option value="50">50 行</option>
+          </select>
+        </label>
+
+        <span id="remote-page-info" style="margin-left:20px;">第 1 页</span>
+        <button onclick="changeRemotePage(-1)">上一页</button>
+        <button onclick="changeRemotePage(1)">下一页</button>
+
+        <button id="batch-update-btn" onclick="showUpdateOptions()" disabled>批量更新</button>
+        <button id="batch-delete-btn" onclick="batchDeleteRemote()" disabled style="display:none;">批量删除</button>
+      </div>
+
+      <div id="update-options" style="display:none; margin-bottom:10px;">
+        <label>更新为：
+          <select id="update-to-status">
+            <option value="待邀请">待邀请</option>
+            <option value="邀请中">邀请中</option>
+            <option value="完成">完成</option>
+            <option value="失败">失败</option>
+          </select>
+        </label>
+        <button onclick="batchUpdateRemote()">确认更新</button>
+        <button onclick="hideUpdateOptions()">取消</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="remote-check-all" onclick="toggleRemoteCheckAll()"></th>
+            <th>卡密</th>
+            <th>邀请码</th>
+            <th>邀请数量</th>
+            <th>订单状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="remote-orders-body">
+          <!-- 由 JS 通过 /api/remote_orders 动态填充 -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // ---- Tab 切换 ----
+    function showTab(name){
+      const contents = document.querySelectorAll('.tab-content');
+      contents.forEach(c => {
+        if(c.id === 'tab-' + name){
+          c.classList.add('active');
+        }else{
+          c.classList.remove('active');
+        }
+      });
+
+      const buttons = document.querySelectorAll('.tab-btn');
+      buttons.forEach(btn => {
+        if(btn.getAttribute('data-tab') === name){
+          btn.classList.add('active');
+        }else{
+          btn.classList.remove('active');
+        }
+      });
+
+      if(name === 'user-info'){
+        loadUserStats();
+      }else if(name === 'remote-orders'){
+        loadRemoteOrders();
+      }
+    }
+
+    // ---- accounts 分页 + 过滤 + 搜索 + 排序 ----
+    let currentPage = 1;
+    let pageSize = 20;  // 每页显示条数（由下拉框控制）
+    let currentSortField = 'id';
+    let currentSortDir = 'desc';
+
+    function onFilterChange(){
+      currentPage = 1;
+      loadAccounts();
+    }
+
+    function onSearchChange(){
+      currentPage = 1;
+      loadAccounts();
+    }
+
+    function resetSearch(){
+      document.getElementById('search-text').value = '';
+      currentPage = 1;
+      loadAccounts();
+    }
+
+    function onPageSizeChange(){
+      const sel = document.getElementById('page-size-select');
+      const v = parseInt(sel.value || '20', 10);
+      if(!isNaN(v) && v > 0){
+        pageSize = v;
+      }else{
+        pageSize = 20;
+      }
+      currentPage = 1;
+      loadAccounts();
+    }
+
+    function changePage(delta){
+      if(delta === 0){
+        currentPage = 1;
+      }else{
+        const newPage = currentPage + delta;
+        if(newPage < 1) return;
+        currentPage = newPage;
+      }
+      loadAccounts();
+    }
+
+    function setSort(field, thElement){
+      if(currentSortField === field){
+        currentSortDir = (currentSortDir === 'asc') ? 'desc' : 'asc';
+      }else{
+        currentSortField = field;
+        currentSortDir = 'asc';
+      }
+
+      // 更新表头箭头显示
+      document.querySelectorAll('th.sortable').forEach(th => {
+        th.removeAttribute('data-sort-dir');
+      });
+      thElement.setAttribute('data-sort-dir', currentSortDir);
+
+      currentPage = 1;
+      loadAccounts();
+    }
+
+    function loadAccounts(){
+      const status = document.getElementById('filter-status').value;
+      const keyword = document.getElementById('search-text').value.trim();
+
+      const params = new URLSearchParams({
+        page: currentPage,
+        page_size: pageSize,
+        sort_field: currentSortField,
+        sort_dir: currentSortDir
+      });
+      if(status && status !== 'all'){
+        params.append('invite_status', status);
+      }
+      if(keyword){
+        params.append('keyword', keyword);
+      }
+
+      fetch('/api/accounts?' + params.toString())
+        .then(res => res.json())
+        .then(data => {
+          const tbody = document.getElementById('accounts-body');
+          tbody.innerHTML = '';
+
+          data.items.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${row.id ?? ''}</td>
+              <td>${row.username ?? ''}</td>
+              <td>${row.invite_status_label ?? row.invite_status ?? ''}</td>
+              <td>${row.devicename ?? ''}</td>
+              <td>${row.invite_code ?? ''}</td>
+              <td>${row.start_at ?? ''}</td>
+              <td>${row.update_at ?? ''}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+
+          const totalPages = data.page_size > 0 ? Math.ceil(data.total / data.page_size) : 1;
+          document.getElementById('page-info').innerText =
+            `第 ${data.page} 页 / 共 ${totalPages} 页（${data.total} 条，每页 ${data.page_size} 条）`;
+
+          // 防止当前页超出范围
+          if(totalPages > 0 && data.page > totalPages){
+            currentPage = totalPages;
+            loadAccounts();
+          }
+        });
+    }
+
+    // ---- 用户密钥统计 ----
+    function loadUserStats(){
+      fetch('/api/orders')
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('pending-count').innerText =
+            data.pending_orders ?? 0;
+          document.getElementById('completed-count').innerText =
+            data.completed_orders ?? 0;
+          document.getElementById('failed-count').innerText =
+            data.failed_orders ?? 0;
+        });
+    }
+
+    // ---- 远程订单部分 ----
+    let remoteCurrentPage = 1;
+    let remotePageSize = 20;
+    let remoteStatus = '';  // 空字符串表示全部状态
+    let remoteSelectedKeys = new Set();
+
+    function onRemoteStatusChange(){
+      const sel = document.getElementById('remote-status');
+      remoteStatus = sel.value;
+      remoteCurrentPage = 1;
+      remoteSelectedKeys.clear();
+      document.getElementById('remote-check-all').checked = false;
+      updateRemoteActionButtons();
+      loadRemoteOrders();
+    }
+
+    function searchByInviteCode(){
+      const inviteCode = document.getElementById('remote-search-invite-code').value.trim();
+      if(!inviteCode){
+        alert('请输入邀请码');
+        return;
+      }
+      remoteCurrentPage = 1;
+      remoteSelectedKeys.clear();
+      document.getElementById('remote-check-all').checked = false;
+      updateRemoteActionButtons();
+
+      fetch('/api/remote_orders/search/invite_code', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({invite_codes: [inviteCode]})
+      })
+        .then(res => res.json())
+        .then(data => {
+          const tbody = document.getElementById('remote-orders-body');
+          tbody.innerHTML = '';
+
+          (data.items || []).forEach(row => {
+            const tr = document.createElement('tr');
+
+            const tdCheck = document.createElement('td');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = row.secret_key;
+            checkbox.onchange = function(){
+              if(this.checked){
+                remoteSelectedKeys.add(row.secret_key);
+              }else{
+                remoteSelectedKeys.delete(row.secret_key);
+                document.getElementById('remote-check-all').checked = false;
+              }
+              updateRemoteActionButtons();
+            };
+            tdCheck.appendChild(checkbox);
+            tr.appendChild(tdCheck);
+
+            const secretKeyTd = document.createElement('td');
+            secretKeyTd.textContent = row.secret_key ?? '';
+            tr.appendChild(secretKeyTd);
+
+            const inviteCodeTd = document.createElement('td');
+            inviteCodeTd.textContent = row.invite_code ?? '';
+            tr.appendChild(inviteCodeTd);
+
+            const inviteCountTd = document.createElement('td');
+            inviteCountTd.textContent = row.invite_count ?? row.invite_num ?? '';
+            tr.appendChild(inviteCountTd);
+
+            const statusTd = document.createElement('td');
+            statusTd.textContent = row.status ?? remoteStatus;
+            tr.appendChild(statusTd);
+
+            const opTd = document.createElement('td');
+            const delBtn = document.createElement('button');
+            delBtn.textContent = '删除';
+            delBtn.onclick = function(){
+              deleteRemoteOrder(row.secret_key);
+            };
+            opTd.appendChild(delBtn);
+            tr.appendChild(opTd);
+
+            tbody.appendChild(tr);
+          });
+
+          document.getElementById('remote-page-info').innerText = `搜索结果：${data.items.length}条`;
+        })
+        .catch(err => {
+          alert('搜索失败：' + err.message);
+        });
+    }
+
+    function searchBySecretKey(){
+      const secretKey = document.getElementById('remote-search-secret-key').value.trim();
+      if(!secretKey){
+        alert('请输入卡密');
+        return;
+      }
+      remoteCurrentPage = 1;
+      remoteSelectedKeys.clear();
+      document.getElementById('remote-check-all').checked = false;
+      updateRemoteActionButtons();
+
+      fetch('/api/remote_orders/search/secret_key', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({secret_key: secretKey})
+      })
+        .then(res => res.json())
+        .then(data => {
+          const tbody = document.getElementById('remote-orders-body');
+          tbody.innerHTML = '';
+
+          (data.items || []).forEach(row => {
+            const tr = document.createElement('tr');
+
+            const tdCheck = document.createElement('td');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = row.secret_key;
+            checkbox.onchange = function(){
+              if(this.checked){
+                remoteSelectedKeys.add(row.secret_key);
+              }else{
+                remoteSelectedKeys.delete(row.secret_key);
+                document.getElementById('remote-check-all').checked = false;
+              }
+              updateRemoteActionButtons();
+            };
+            tdCheck.appendChild(checkbox);
+            tr.appendChild(tdCheck);
+
+            const secretKeyTd = document.createElement('td');
+            secretKeyTd.textContent = row.secret_key ?? '';
+            tr.appendChild(secretKeyTd);
+
+            const inviteCodeTd = document.createElement('td');
+            inviteCodeTd.textContent = row.invite_code ?? '';
+            tr.appendChild(inviteCodeTd);
+
+            const inviteCountTd = document.createElement('td');
+            inviteCountTd.textContent = row.invite_count ?? row.invite_num ?? '';
+            tr.appendChild(inviteCountTd);
+
+            const statusTd = document.createElement('td');
+            statusTd.textContent = row.status ?? remoteStatus;
+            tr.appendChild(statusTd);
+
+            const opTd = document.createElement('td');
+            const delBtn = document.createElement('button');
+            delBtn.textContent = '删除';
+            delBtn.onclick = function(){
+              deleteRemoteOrder(row.secret_key);
+            };
+            opTd.appendChild(delBtn);
+            tr.appendChild(opTd);
+
+            tbody.appendChild(tr);
+          });
+
+          document.getElementById('remote-page-info').innerText = `搜索结果：${data.items.length}条`;
+        })
+        .catch(err => {
+          alert('搜索失败：' + err.message);
+        });
+    }
+
+    function resetRemoteSearch(){
+      document.getElementById('remote-search-invite-code').value = '';
+      document.getElementById('remote-search-secret-key').value = '';
+      remoteCurrentPage = 1;
+      remoteSelectedKeys.clear();
+      document.getElementById('remote-check-all').checked = false;
+      updateRemoteActionButtons();
+      loadRemoteOrders();
+    }
+
+    function onRemotePageSizeChange(){
+      const sel = document.getElementById('remote-pagesize');
+      const v = parseInt(sel.value || '20', 10);
+      if(!isNaN(v) && v > 0){
+        remotePageSize = v;
+      }else{
+        remotePageSize = 20;
+      }
+      remoteCurrentPage = 1;
+      loadRemoteOrders();
+    }
+
+    function changeRemotePage(delta){
+      const newPage = remoteCurrentPage + delta;
+      if(newPage < 1) return;
+      remoteCurrentPage = newPage;
+      loadRemoteOrders();
+    }
+
+    function loadRemoteOrders(){
+      const params = new URLSearchParams({
+        page: remoteCurrentPage,
+        pageSize: remotePageSize,
+        status: remoteStatus
+      });
+
+      fetch('/api/remote_orders?' + params.toString())
+        .then(res => res.json())
+        .then(data => {
+          const tbody = document.getElementById('remote-orders-body');
+          tbody.innerHTML = '';
+
+          (data.items || []).forEach(row => {
+            const tr = document.createElement('tr');
+
+            // 创建复选框单元格
+            const tdCheck = document.createElement('td');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = row.secret_key;
+            checkbox.onchange = function(){
+              if(this.checked){
+                remoteSelectedKeys.add(row.secret_key);
+              }else{
+                remoteSelectedKeys.delete(row.secret_key);
+                document.getElementById('remote-check-all').checked = false;
+              }
+              updateRemoteActionButtons();  // Bug 2 修复：确保每次复选框变化都调用此函数
+            };
+            tdCheck.appendChild(checkbox);
+            tr.appendChild(tdCheck);
+
+            // 创建其他列
+            const secretKeyTd = document.createElement('td');
+            secretKeyTd.textContent = row.secret_key ?? '';
+            tr.appendChild(secretKeyTd);
+
+            const inviteCodeTd = document.createElement('td');
+            inviteCodeTd.textContent = row.invite_code ?? '';
+            tr.appendChild(inviteCodeTd);
+
+            const inviteCountTd = document.createElement('td');
+            inviteCountTd.textContent = row.invite_count ?? row.invite_num ?? '';
+            tr.appendChild(inviteCountTd);
+
+            const statusTd = document.createElement('td');
+            statusTd.textContent = row.status ?? remoteStatus;
+            tr.appendChild(statusTd);
+
+            const opTd = document.createElement('td');
+            const delBtn = document.createElement('button');
+            delBtn.textContent = '删除';
+            delBtn.onclick = function(){
+              deleteRemoteOrder(row.secret_key);
+            };
+            opTd.appendChild(delBtn);
+            tr.appendChild(opTd);
+
+            tbody.appendChild(tr);
+          });
+
+          const totalPages = remotePageSize > 0 ? Math.ceil((data.total || 0) / remotePageSize) : 1;
+          document.getElementById('remote-page-info').innerText =
+            `第 ${remoteCurrentPage} 页 / 共 ${totalPages} 页（${data.total || 0} 条，每页 ${remotePageSize} 条）`;
+
+          if(totalPages > 0 && remoteCurrentPage > totalPages){
+            remoteCurrentPage = totalPages;
+            loadRemoteOrders();
+          }
+        })
+        .catch(err => console.error('加载远程订单失败:', err));
+    }
+
+    function toggleRemoteCheckAll(){
+      const allCheckbox = document.getElementById('remote-check-all');
+      remoteSelectedKeys.clear();
+      document.querySelectorAll('#remote-orders-body input[type="checkbox"]').forEach(cb => {
+        cb.checked = allCheckbox.checked;
+        if(allCheckbox.checked){
+          remoteSelectedKeys.add(cb.value);
+        }
+      });
+      updateRemoteActionButtons();
+    }
+
+    function updateRemoteActionButtons(){
+      const hasSelected = remoteSelectedKeys.size > 0;
+      document.getElementById('batch-update-btn').disabled = !hasSelected;
+      // Bug 1 修复：当没有选中任何项时，自动隐藏更新选项框
+      if(!hasSelected){
+        hideUpdateOptions();
+      }
+    }
+
+    function showUpdateOptions(){
+      document.getElementById('update-options').style.display = 'block';
+    }
+
+    function hideUpdateOptions(){
+      document.getElementById('update-options').style.display = 'none';
+    }
+
+    function batchUpdateRemote(){
+      const newStatus = document.getElementById('update-to-status').value;
+      const keys = Array.from(remoteSelectedKeys);
+      if(keys.length === 0){
+        alert('请先选择订单');
+        return;
+      }
+
+      fetch('/api/remote_orders/update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({secret_keys: keys, new_status: newStatus})
+      })
+        .then(res => res.json())
+        .then(data => {
+          alert('批量更新完成：' + JSON.stringify(data.results));
+          hideUpdateOptions();
+          remoteSelectedKeys.clear();
+          document.getElementById('remote-check-all').checked = false;
+          updateRemoteActionButtons();
+          loadRemoteOrders();
+        })
+        .catch(err => {
+          alert('批量更新失败：' + err.message);
+        });
+    }
+
+    function deleteRemoteOrder(secretKey){
+      if(!confirm('确认删除此订单？')){
+        return;
+      }
+      fetch('/api/remote_orders/' + secretKey, {method: 'DELETE'})
+        .then(res => res.json())
+        .then(data => {
+          alert('删除成功');
+          loadRemoteOrders();
+        })
+        .catch(err => {
+          alert('删除失败：' + err.message);
+        });
+    }
+
+    function batchDeleteRemote(){
+      // 可选实现，此处未用
+    }
+
+    // ====== 本地订单相关函数 ======
+    let localSelectedSecretKeys = new Set();
+
+    function onLocalCheckboxChange(checkbox){
+      const secretKey = checkbox.getAttribute('value');
+      if(checkbox.checked){
+        localSelectedSecretKeys.add(secretKey);
+      }else{
+        localSelectedSecretKeys.delete(secretKey);
+        document.getElementById('local-check-all').checked = false;
+        document.getElementById('local-check-all-header').checked = false;
+      }
+      updateLocalActionButtons();
+    }
+
+    function toggleLocalCheckAll(){
+      const allCheckbox = document.getElementById('local-check-all');
+      const headerCheckbox = document.getElementById('local-check-all-header');
+      localSelectedSecretKeys.clear();
+      document.querySelectorAll('#local-orders-body .local-row-checkbox').forEach(cb => {
+        cb.checked = allCheckbox.checked;
+        if(allCheckbox.checked){
+          localSelectedSecretKeys.add(cb.getAttribute('data-invite-code'));
+        }
+      });
+      headerCheckbox.checked = allCheckbox.checked;
+      updateLocalActionButtons();
+    }
+
+    function updateLocalActionButtons(){
+      const hasSelected = localSelectedSecretKeys.size > 0;
+      document.getElementById('local-batch-delete-btn').disabled = !hasSelected;
+
+      // 同步全选框状态
+      const allCheckboxes = document.querySelectorAll('#local-orders-body .local-row-checkbox');
+      const allChecked = allCheckboxes.length > 0 && Array.from(allCheckboxes).every(cb => cb.checked);
+      document.getElementById('local-check-all').checked = allChecked;
+      document.getElementById('local-check-all-header').checked = allChecked;
+    }
+
+    function deleteLocalOrder(secretKey){
+      if(!confirm('确认删除此订单？')){
+        return;
+      }
+      fetch('/api/local_orders/' + secretKey, {method: 'DELETE'})
+        .then(res => res.json())
+        .then(data => {
+          alert('删除成功');
+          location.reload();
+        })
+        .catch(err => {
+          alert('删除失败：' + err.message);
+        });
+    }
+
+    function batchDeleteLocal(){
+      if(localSelectedSecretKeys.size === 0){
+        alert('请选择至少一条订单');
+        return;
+      }
+      if(!confirm(`确认删除 ${localSelectedSecretKeys.size} 条订单？`)){
+        return;
+      }
+      const secretKeys = Array.from(localSelectedSecretKeys);
+      fetch('/api/local_orders/batch_delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({secret_keys: secretKeys})
+      })
+        .then(res => res.json())
+        .then(data => {
+          alert('批量删除成功');
+          location.reload();
+        })
+        .catch(err => {
+          alert('批量删除失败：' + err.message);
+        });
+    }
+
+    function loadLocalOrders(){
+      // 从表格中重新加载本地订单的选中状态
+      localSelectedSecretKeys.clear();
+      document.querySelectorAll('#local-orders-body .local-row-checkbox').forEach(cb => {
+        if(cb.checked){
+          localSelectedSecretKeys.add(cb.getAttribute('data-invite-code'));
+        }
+      });
+      updateLocalActionButtons();
+    }
+
+    // 页面加载完默认拉取第一页账号数据 + 统计
+    document.addEventListener('DOMContentLoaded', function(){
+      const idTh = document.querySelector('th.sortable[data-field="id"]');
+      if(idTh){
+        idTh.setAttribute('data-sort-dir', currentSortDir);
+      }
+      const sel = document.getElementById('page-size-select');
+      if(sel){
+        sel.value = String(pageSize);
+      }
+      loadAccounts();
+      loadUserStats();
+      loadLocalOrders();
+    });
+  </script>
+
+</body>
+</html>

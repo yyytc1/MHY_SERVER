@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API调用说明 - 内部账号管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" rel="stylesheet">
+    <style>
+        .api-endpoint {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        .method-get { border-left-color: #28a745; }
+        .method-post { border-left-color: #007bff; }
+        .method-put { border-left-color: #ffc107; }
+        .method-delete { border-left-color: #dc3545; }
+        
+        .method-badge {
+            font-size: 0.8em;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+        }
+        .badge-get { background-color: #28a745; }
+        .badge-post { background-color: #007bff; }
+        .badge-put { background-color: #ffc107; color: #000; }
+        .badge-delete { background-color: #dc3545; }
+        
+        .code-block {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .response-example {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .status-code {
+            font-weight: bold;
+        }
+        .status-200 { color: #28a745; }
+        .status-201 { color: #28a745; }
+        .status-400 { color: #dc3545; }
+        .status-404 { color: #dc3545; }
+        .status-500 { color: #dc3545; }
+        
+        .sidebar {
+            position: sticky;
+            top: 20px;
+        }
+        
+        .nav-link {
+            color: #495057;
+            padding: 8px 12px;
+            border-radius: 5px;
+            margin: 2px 0;
+        }
+        
+        .nav-link:hover {
+            background-color: #e9ecef;
+            color: #007bff;
+        }
+        
+        .nav-link.active {
+            background-color: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边栏导航 -->
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+                <div class="position-sticky pt-3">
+                    <h4 class="text-center mb-4">
+                        <i class="bi bi-book"></i>
+                        API文档
+                    </h4>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/">
+                                <i class="bi bi-house"></i>
+                                返回首页
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#overview">
+                                <i class="bi bi-info-circle"></i>
+                                概述
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#authentication">
+                                <i class="bi bi-shield-lock"></i>
+                                认证
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#endpoints">
+                                <i class="bi bi-list"></i>
+                                API端点
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#models">
+                                <i class="bi bi-diagram-3"></i>
+                                数据模型
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#examples">
+                                <i class="bi bi-code-slash"></i>
+                                示例代码
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- 主内容区 -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">API调用说明</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <button type="button" class="btn btn-outline-primary" onclick="copyAllExamples()">
+                            <i class="bi bi-clipboard"></i>
+                            复制所有示例
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 概述 -->
+                <section id="overview" class="mb-5">
+                    <h2><i class="bi bi-info-circle"></i> 概述</h2>
+                    <p>内部账号管理系统提供RESTful API接口，用于管理账号信息。所有API都基于HTTP协议，支持JSON格式的数据交换。</p>
+                    
+                    <div class="alert alert-info">
+                        <h5><i class="bi bi-lightbulb"></i> 基础信息</h5>
+                        <ul class="mb-0">
+                            <li><strong>基础URL:</strong> <code>http://localhost:8080/api</code></li>
+                            <li><strong>数据格式:</strong> JSON</li>
+                            <li><strong>字符编码:</strong> UTF-8</li>
+                            <li><strong>API版本:</strong> v1</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- 认证 -->
+                <section id="authentication" class="mb-5">
+                    <h2><i class="bi bi-shield-lock"></i> 认证</h2>
+                    <p>当前版本无需认证，所有API接口均可直接访问。未来版本可能会添加JWT或API Key认证机制。</p>
+                </section>
+
+                <!-- API端点 -->
+                <section id="endpoints" class="mb-5">
+                    <h2><i class="bi bi-list"></i> API端点</h2>
+                    
+                    <!-- 创建账号 -->
+                    <div class="api-endpoint method-post">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="method-badge badge-post me-3">POST</span>
+                            <h4 class="mb-0">/api/accounts</h4>
+                        </div>
+                        <p class="text-muted">创建新账号</p>
+                        
+                        <h6>请求参数:</h6>
+                        <div class="code-block">
+                            <pre><code>{
+  "username": "string (必填, 最大50字符, 唯一)",
+  "password": "string (必填, 最大255字符)",
+  "account_status": "string (可选, 默认: 'correct')",
+  "invite_status": "string (可选, 默认: 'pending')",
+  "account_token": "string (可选, 无限制长度)"
+}</code></pre>
+                        </div>
+                        
+                        <h6>响应示例:</h6>
+                        <div class="response-example">
+                            <div class="status-code status-201">HTTP 201 Created</div>
+                            <pre><code>{
+  "message": "账号创建成功",
+  "data": {
+    "id": 1,
+    "username": "example_user",
+    "password": "password123",
+    "account_status": "correct",
+    "account_token": "",
+    "invite_status": "pending",
+    "created_at": "2025-01-27T10:00:00Z",
+    "updated_at": "2025-01-27T10:00:00Z"
+  }
+}</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- 获取所有账号 -->
+                    <div class="api-endpoint method-get">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="method-badge badge-get me-3">GET</span>
+                            <h4 class="mb-0">/api/accounts</h4>
+                        </div>
+                        <p class="text-muted">获取账号列表（支持搜索和分页）</p>
+                        
+                        <h6>查询参数:</h6>
+                        <ul>
+                            <li><code>search</code> - 搜索关键词（用户名或密码）</li>
+                            <li><code>page</code> - 页码（默认: 1）</li>
+                            <li><code>page_size</code> - 每页数量（默认: 10，最大: 100）</li>
+                        </ul>
+                        
+                        <h6>响应示例:</h6>
+                        <div class="response-example">
+                            <div class="status-code status-200">HTTP 200 OK</div>
+                            <pre><code>{
+  "data": [
+    {
+      "id": 1,
+      "username": "example_user",
+      "password": "password123",
+      "account_status": "correct",
+      "account_token": "",
+      "invite_status": "pending",
+      "created_at": "2025-01-27T10:00:00Z",
+      "updated_at": "2025-01-27T10:00:00Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 10,
+  "total_pages": 1
+}</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- 获取单个账号 -->
+                    <div class="api-endpoint method-get">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="method-badge badge-get me-3">GET</span>
+                            <h4 class="mb-0">/api/accounts/{id}</h4>
+                        </div>
+                        <p class="text-muted">根据ID获取单个账号信息</p>
+                        
+                        <h6>路径参数:</h6>
+                        <ul>
+                            <li><code>id</code> - 账号ID（必填）</li>
+                        </ul>
+                        
+                        <h6>响应示例:</h6>
+                        <div class="response-example">
+                            <div class="status-code status-200">HTTP 200 OK</div>
+                            <pre><code>{
+  "data": {
+    "id": 1,
+    "username": "example_user",
+    "password": "password123",
+    "account_status": "correct",
+    "account_token": "",
+    "invite_status": "pending",
+    "created_at": "2025-01-27T10:00:00Z",
+    "updated_at": "2025-01-27T10:00:00Z"
+  }
+}</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- 获取pending状态账号 -->
+                    <div class="api-endpoint method-get">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="method-badge badge-get me-3">GET</span>
+                            <h4 class="mb-0">/api/accounts/pending</h4>
+                        </div>
+                        <p class="text-muted">获取状态为pending的单个账号资料</p>
+                        
+                        <h6>响应示例:</h6>
+                        <div class="response-example">
+                            <div class="status-code status-200">HTTP 200 OK</div>
+                            <pre><code>{
+  "data": {
+    "id": 1,
+    "username": "example_user",
+    "password": "password123",
+    "account_status": "correct",
+    "account_token": "",
+    "invite_status": "pending",
+    "created_at": "2025-01-27T10:00:00Z",
+    "updated_at": "2025-01-27T10:00:00Z"
+  }
+}</code></pre>
+                        </div>
+                        
+                        <div class="response-example">
+                            <div class="status-code status-404">HTTP 404 Not Found</div>
+                            <pre><code>{
+  "error": "没有找到状态为pending的账号"
+}</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- 更新账号 -->
+                    <div class="api-endpoint method-put">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="method-badge badge-put me-3">PUT</span>
+                            <h4 class="mb-0">/api/accounts/{id}</h4>
+                        </div>
+                        <p class="text-muted">更新指定ID的账号信息</p>
+                        
+                        <h6>路径参数:</h6>
+                        <ul>
+                            <li><code>id</code> - 账号ID（必填）</li>
+                        </ul>
+                        
+                        <h6>请求参数:</h6>
+                        <div class="code-block">
+                            <pre><code>{
+  "username": "string (可选, 最大50字符, 唯一)",
+  "password": "string (可选, 最大255字符)",
+  "account_status": "string (可选)",
+  "invite_status": "string (可选)",
+  "account_token": "string (可选, 无限制长度)"
+}</code></pre>
+                        </div>
+                        
+                        <h6>响应示例:</h6>
+                        <div class="response-example">
+                            <div class="status-code status-200">HTTP 200 OK</div>
+                            <pre><code>{
+  "message": "账号更新成功",
+  "data": {
+    "id": 1,
+    "username": "updated_user",
+    "password": "newpassword123",
+    "account_status": "correct",
+    "account_token": "token123",
+    "invite_status": "invited",
+    "created_at": "2025-01-27T10:00:00Z",
+    "updated_at": "2025-01-27T11:00:00Z"
+  }
+}</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- 删除账号 -->
+                    <div class="api-endpoint method-delete">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="method-badge badge-delete me-3">DELETE</span>
+                            <h4 class="mb-0">/api/accounts/{id}</h4>
+                        </div>
+                        <p class="text-muted">删除指定ID的账号</p>
+                        
+                        <h6>路径参数:</h6>
+                        <ul>
+                            <li><code>id</code> - 账号ID（必填）</li>
+                        </ul>
+                        
+                        <h6>响应示例:</h6>
+                        <div class="response-example">
+                            <div class="status-code status-200">HTTP 200 OK</div>
+                            <pre><code>{
+  "message": "账号删除成功"
+}</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- 导出账号 -->
+                    <div class="api-endpoint method-get">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="method-badge badge-get me-3">GET</span>
+                            <h4 class="mb-0">/api/accounts/export</h4>
+                        </div>
+                        <p class="text-muted">导出所有账号数据为CSV格式</p>
+                        
+                        <h6>响应示例:</h6>
+                        <div class="response-example">
+                            <div class="status-code status-200">HTTP 200 OK</div>
+                            <p>返回CSV文件下载，包含以下列：</p>
+                            <ul>
+                                <li>ID</li>
+                                <li>用户名</li>
+                                <li>密码</li>
+                                <li>账号状态</li>
+                                <li>邀约状态</li>
+                                <li>创建时间</li>
+                                <li>更新时间</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 数据模型 -->
+                <section id="models" class="mb-5">
+                    <h2><i class="bi bi-diagram-3"></i> 数据模型</h2>
+                    
+                    <h4>Account（账号模型）</h4>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>字段名</th>
+                                    <th>类型</th>
+                                    <th>约束</th>
+                                    <th>描述</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>id</code></td>
+                                    <td>uint</td>
+                                    <td>主键，自增</td>
+                                    <td>账号唯一标识</td>
+                                </tr>
+                                <tr>
+                                    <td><code>username</code></td>
+                                    <td>string</td>
+                                    <td>最大50字符，唯一索引，非空</td>
+                                    <td>用户名</td>
+                                </tr>
+                                <tr>
+                                    <td><code>password</code></td>
+                                    <td>string</td>
+                                    <td>最大255字符，非空</td>
+                                    <td>密码</td>
+                                </tr>
+                                <tr>
+                                    <td><code>account_status</code></td>
+                                    <td>string</td>
+                                    <td>最大20字符，默认'correct'</td>
+                                    <td>账号状态：correct(密码正确), incorrect(密码错误), risk(登录风险)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>account_token</code></td>
+                                    <td>string</td>
+                                    <td>无限制（TEXT类型）</td>
+                                    <td>账号令牌</td>
+                                </tr>
+                                <tr>
+                                    <td><code>invite_status</code></td>
+                                    <td>string</td>
+                                    <td>最大20字符，默认'pending'</td>
+                                    <td>邀约状态：pending(待处理), invited(已邀约), not_invited(未邀约)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>created_at</code></td>
+                                    <td>time.Time</td>
+                                    <td>自动生成</td>
+                                    <td>创建时间</td>
+                                </tr>
+                                <tr>
+                                    <td><code>updated_at</code></td>
+                                    <td>time.Time</td>
+                                    <td>自动更新</td>
+                                    <td>更新时间</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 示例代码 -->
+                <section id="examples" class="mb-5">
+                    <h2><i class="bi bi-code-slash"></i> 示例代码</h2>
+                    
+                    <h4>JavaScript (Fetch API)</h4>
+                    <div class="code-block">
+                        <pre><code>// 获取所有账号
+fetch('http://localhost:8080/api/accounts')
+  .then(response => response.json())
+  .then(data => console.log(data));
+
+// 创建账号
+fetch('http://localhost:8080/api/accounts', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    username: 'new_user',
+    password: 'password123',
+    account_status: 'correct',
+    invite_status: 'pending'
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));
+
+// 获取pending状态账号
+fetch('http://localhost:8080/api/accounts/pending')
+  .then(response => response.json())
+  .then(data => console.log(data));
+
+// 更新账号
+fetch('http://localhost:8080/api/accounts/1', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    account_status: 'invited',
+    invite_status: 'invited'
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));
+
+// 删除账号
+fetch('http://localhost:8080/api/accounts/1', {
+  method: 'DELETE'
+})
+.then(response => response.json())
+.then(data => console.log(data));</code></pre>
+                    </div>
+
+                    <h4>cURL</h4>
+                    <div class="code-block">
+                        <pre><code># 获取所有账号
+curl -X GET "http://localhost:8080/api/accounts"
+
+# 创建账号
+curl -X POST "http://localhost:8080/api/accounts" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "new_user",
+    "password": "password123",
+    "account_status": "correct",
+    "invite_status": "pending"
+  }'
+
+# 获取pending状态账号
+curl -X GET "http://localhost:8080/api/accounts/pending"
+
+# 更新账号
+curl -X PUT "http://localhost:8080/api/accounts/1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "account_status": "invited",
+    "invite_status": "invited"
+  }'
+
+# 删除账号
+curl -X DELETE "http://localhost:8080/api/accounts/1"</code></pre>
+                    </div>
+
+                    <h4>Python (requests)</h4>
+                    <div class="code-block">
+                        <pre><code>import requests
+import json
+
+base_url = "http://localhost:8080/api"
+
+# 获取所有账号
+response = requests.get(f"{base_url}/accounts")
+print(response.json())
+
+# 创建账号
+data = {
+    "username": "new_user",
+    "password": "password123",
+    "account_status": "correct",
+    "invite_status": "pending"
+}
+response = requests.post(f"{base_url}/accounts", json=data)
+print(response.json())
+
+# 获取pending状态账号
+response = requests.get(f"{base_url}/accounts/pending")
+print(response.json())
+
+# 更新账号
+update_data = {
+    "account_status": "invited",
+    "invite_status": "invited"
+}
+response = requests.put(f"{base_url}/accounts/1", json=update_data)
+print(response.json())
+
+# 删除账号
+response = requests.delete(f"{base_url}/accounts/1")
+print(response.json())</code></pre>
+                    </div>
+                </section>
+
+                <!-- 错误码说明 -->
+                <section class="mb-5">
+                    <h2><i class="bi bi-exclamation-triangle"></i> 错误码说明</h2>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>状态码</th>
+                                    <th>说明</th>
+                                    <th>示例</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="status-code status-200">200</span></td>
+                                    <td>请求成功</td>
+                                    <td>获取数据成功</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="status-code status-201">201</span></td>
+                                    <td>创建成功</td>
+                                    <td>账号创建成功</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="status-code status-400">400</span></td>
+                                    <td>请求参数错误</td>
+                                    <td>无效的ID格式</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="status-code status-404">404</span></td>
+                                    <td>资源不存在</td>
+                                    <td>账号不存在</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="status-code status-409">409</span></td>
+                                    <td>冲突</td>
+                                    <td>用户名已存在</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="status-code status-500">500</span></td>
+                                    <td>服务器内部错误</td>
+                                    <td>数据库操作失败</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 平滑滚动到锚点
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // 复制所有示例代码
+        function copyAllExamples() {
+            const codeBlocks = document.querySelectorAll('pre code');
+            let allCode = '';
+            
+            codeBlocks.forEach(block => {
+                allCode += block.textContent + '\n\n';
+            });
+            
+            navigator.clipboard.writeText(allCode).then(() => {
+                alert('所有示例代码已复制到剪贴板！');
+            }).catch(err => {
+                console.error('复制失败:', err);
+            });
+        }
+
+        // 高亮当前查看的导航项
+        window.addEventListener('scroll', () => {
+            const sections = document.querySelectorAll('section[id]');
+            const navLinks = document.querySelectorAll('.nav-link[href^="#"]');
+            
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 200) {
+                    current = section.getAttribute('id');
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
