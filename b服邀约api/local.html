@@ -127,6 +127,7 @@
           <tr>
             <th class="sortable" data-field="id" onclick="setSort('id', this)">ID</th>
             <th class="sortable" data-field="username" onclick="setSort('username', this)">用户名</th>
+            <th class="sortable" data-field="password" onclick="setSort('password', this)">密码</th>
             <th class="sortable" data-field="invite_status" onclick="setSort('invite_status', this)">邀请状态</th>
             <th class="sortable" data-field="devicename" onclick="setSort('devicename', this)">设备码</th>
             <th>绑定邀请码</th>
@@ -369,6 +370,7 @@
             tr.innerHTML = `
               <td>${row.id ?? ''}</td>
               <td>${row.username ?? ''}</td>
+              <td>${row.password ?? ''}</td>
               <td>${row.invite_status_label ?? row.invite_status ?? ''}</td>
               <td>${row.devicename ?? ''}</td>
               <td>${row.invite_code ?? ''}</td>

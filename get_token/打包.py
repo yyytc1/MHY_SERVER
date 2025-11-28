@@ -13,11 +13,17 @@ import glob
 import os
 import shutil
 import subprocess
+import sys
 import time
 
 
-ver = '1.2'
-app_name = f'取gametoken_{ver}'
+ver = '2.0'
+app_name = f'取token_{ver}'
+if getattr(sys, 'frozen', False):
+	# 如果是打包后的应用
+	debug = False
+else:
+	debug = True
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 # coding : utf-8
 # @Time : 2025/11/6 7:16 
 # @Author : Adolph
-# @File : thread_.py 
+# @File : proxy_pool.py
 # @Software : PyCharm
 import json
 import queue

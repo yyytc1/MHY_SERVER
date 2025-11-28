@@ -10,23 +10,13 @@ import subprocess
 import time
 import traceback
 
-from baseObj import MHYObj
+from baseObject import MHYObj
 from config import *
 
 from flask import Flask, request, jsonify
-# from flask_limiter import Limiter
-# from flask_limiter.util import get_remote_address
 
 app = Flask(__name__)
 app.json.ensure_ascii = False
-
-# limiter = Limiter(
-#     app=app,                       # 用关键字传 app
-#     key_func=get_remote_address,   # 不再冲突
-#     storage_uri="memory://",
-#     default_limits=["50 per second"],
-#     on_breach=lambda: ({"error": "请求频率过高，请稍后再试"}, 502)
-# )
 
 
 @app.route('/api/login', methods=['POST'])
@@ -74,6 +64,26 @@ def MiHoYoApiPhoneLogin():
 	mhy_obj.close()
 	del mhy_obj, data, user, pwd
 	return jsonify(msg), status_code
+
+
+# @app.route('/api/getCookieToken', methods=['POST'])
+# def MiHoYoApiWebLogin():
+# 	data = request.get_json(silent=True) or {}
+# 	user = data.get('user')
+# 	pwd = data.get('pass')
+# 	if not user or not pwd:
+# 		return jsonify({"error": "账号 密码 不能为空"}), 400
+# 	data['city'] = '1'
+# 	mhy_obj = MHYObj(data)
+# 	mhy_obj.log('国服获取cookie_token')
+# 	try:
+# 		msg, status_code = mhy_obj.MiHoYoWebLogin()
+# 	except:
+# 		open(error_file, 'a', encoding='utf8').write(f'【{datetime.datetime.now()}】 {user}\n{traceback.format_exc()}\n')
+# 		msg, status_code = {'error': '代码未知错误'}, 400
+# 	mhy_obj.close()
+# 	del mhy_obj, data, user, pwd
+# 	return jsonify(msg), status_code
 
 
 def is_port_in_use(port):

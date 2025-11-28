@@ -1,7 +1,7 @@
 # coding : utf-8
 # @Time : 2025/11/16 16:10 
 # @Author : Adolph
-# @File : strFunc.py 
+# @File : base_func.py
 # @Software : PyCharm
 import base64
 import random

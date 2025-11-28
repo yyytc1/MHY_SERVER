@@ -150,6 +150,11 @@ def random_seed_id():
 	return ''.join(random.choices(base_str, k=16))
 
 
+def random_lower_str(k):
+	base_str = string.ascii_lowercase + string.digits
+	return ''.join(random.choices(base_str, k=k))
+
+
 def seed_ts():
 	return str(int(time.time() * 1000))
 

@@ -117,9 +117,10 @@ class BaseObj:
 			pass
 	
 	def change_proxy(self):
+		proxy = self.get_proxy()
 		self.conn_by_proxy.conn.proxies = {
-			"http": f"http://{self.get_proxy()}",
-			"https": f"http://{self.get_proxy()}"
+			"http": f"http://{proxy}",
+			"https": f"http://{proxy}"
 		}
 
 
@@ -901,6 +902,41 @@ class MHYObj(BaseObj):
 				self.log('极验识别成功')
 				return base64_sccode(res.json()['data']['seccode'])
 	
+	def web_login(self):
+		path = 'https://passport-api.mihoyo.com/account/ma-cn-passport/web/loginByPassword'
+		times = 0
+		while self.working:
+			try:
+				headers = {
+					"x-rpc-app_id": "ess4np01pji8",
+					"x-rpc-client_type": "4",
+					"x-rpc-device_fp": self.device_fp,
+					"x-rpc-device_id": self.device_uid,
+					"x-rpc-game_biz": "abc_cn",
+					"x-rpc-mi_referrer": "https://user.mihoyo.com/login-platform/index.html?app_id=ess4np01pji8&theme=abc&token_type=4&game_biz=abc_cn&fs_ql_w=0&fs_ql_m=0&message_origin=https%253A%252F%252Fyyjl.mihoyo.com&succ_back_type=message%253Alogin-platform%253Alogin-success&fail_back_type=message%253Alogin-platform%253Alogin-fail&ux_mode=popup&iframe_level=1#/login/password",
+					"x-rpc-sdk_version": "2.44.0",
+					"x-rpc-source": "v2.webLogin"
+				}
+				data = {
+					'account': rsa_encrypt(self.city, self.user),
+					'password': rsa_encrypt(self.city, self.pwd),
+				}
+				res = self.conn_by_proxy.conn.post(path, json=data, headers=headers)
+				res.close()
+				if res.status_code == 200 and 'message' in res.json() and res.json()['message'] == 'OK':
+					cookie = self.conn_by_proxy.conn.cookies.get_dict()
+					user_info = res.json()['data']['user_info']
+					return True, f"{self.user}----{user_info['aid']}|{user_info['mid']}|{cookie['cookie_token_v2']}"
+				else:
+					times += 1
+				if times >= MAX_RETRY_TIMES:
+					return False, '登录超时'
+			except:
+				e = traceback.format_exc()
+				pass
+			self.y_sleep(2)
+			self.change_proxy()
+		
 	# 米哈游BH极验 用ip能过 返回id
 	def bh_check(self):
 		if self.city in ['1', '6']:
@@ -1374,6 +1410,16 @@ class MHYObj(BaseObj):
 				}, 200
 		else:
 			return {'error': '未取到短信内容'}, 400
+	
+	def MiHoYoWebLogin(self):
+		ret = self.get_fp()
+		if not ret:
+			return '获取fp失败', 500
+		ret, msg = self.web_login()
+		if ret:
+			return {'result': ret, 'msg': msg}, 200
+		else:
+			return {'error': msg}, 400
 	
 	def mhy_login_by_phone(self, code):
 		self.get_fp()
@@ -2008,19 +2054,19 @@ class MHYObj(BaseObj):
 
 if __name__ == '__main__':
 	info_ = {
-		# 'user': 'katzi99@163.com',
-		# 'pass': 'BA5201314.4',
-		'user': 'vedenev2025@list.ru',
-		'pass': 'r2z3`YlDNVpx',
+		'user': 'katzi99@163.com',
+		'pass': 'BA5201314.4',
+		# 'user': 'vedenev2025@list.ru',
+		# 'pass': 'r2z3`YlDNVpx',
 		# 'user': 'COM120|17287256208',
 		# 'pass': 'http://sms.newszfang.vip:3000/2jLuuGbqVVfVy6ndDKuTCi',
 		# 'user': 'asher48cya@outlook.com',
 		# 'pass': 'whircx78433',
-		'city': '2'
+		'city': '1'
 	}
 	proxy_ = '075644:321d6b@48224119.sd.proxy.xiequ.cn:2829'
 	obj = MHYObj(info_)
-	obj.HoYoVerse()
+	obj.MiHoYoWebLogin()
 # obj.MiHoYoPhoneLoginCaptchaWithProxy()
 # obj.bh_geetest_login_task()
 # ret_ = obj.BiliLogHandle()
